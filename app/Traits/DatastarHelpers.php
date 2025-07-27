@@ -30,7 +30,7 @@ trait DatastarHelpers
             return $validator->errors()->toArray();
         }
 
-        $this->resetValidationErrors();
+        //$this->resetValidationErrors();
 
         return $validator->validated();
     }
@@ -59,40 +59,42 @@ trait DatastarHelpers
 
     public function fieldValidate($field, $key = null)
     {
-        $rules = $this->rules();
+        return $this->getStreamedResponse(function() use ($field, $key) {
+            $rules = $this->rules();
 
-        if ($key) {
-            if (!str_ends_with($field, "_{$key}")) {
+            if ($key) {
+                if (!str_ends_with($field, "_{$key}")) {
+                    $this->toastify(
+                        'error',
+                        __('Field Validation setup for :field is not valid.', ['field' => $field])
+                    );
+                    return;
+                }
+                $rules = $this->setRulesKey($key);
+            }
+
+            if (!isset($rules[$field])) {
                 $this->toastify(
                     'error',
-                    __('Field Validation setup for :field is not valid.', ['field' => $field])
+                    __('Field :field is not found in rules.', ['field' => $field])
                 );
                 return;
             }
-            $rules = $this->setRulesKey($key);
-        }
 
-        if (!isset($rules[$field])) {
-            $this->toastify(
-                'error',
-                __('Field :field is not found in rules.', ['field' => $field])
+            $signals = $this->readSignals();
+
+            if (!isset($signals[$field])) {
+                $this->toastify(
+                    'error',
+                    __('Field :field is not found in signals.', ['field' => $field])
+                );
+                return;
+            }
+
+            $this->validate(
+                $signals,
+                [$field => $rules[$field]]
             );
-            return;
-        }
-
-        $signals = $this->readSignals();
-
-        if (!isset($signals[$field])) {
-            $this->toastify(
-                'error',
-                __('Field :field is not found in signals.', ['field' => $field])
-            );
-            return;
-        }
-
-        $this->validate(
-            $signals,
-            [$field => $rules[$field]]
-        );
+        });
     }
 }
